@@ -1,112 +1,56 @@
-## Writeup Template
-
-### You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
----
-
-**Advanced Lane Finding Project**
-
-The goals / steps of this project are the following:
-
-* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
-* Apply a distortion correction to raw images.
-* Use color transforms, gradients, etc., to create a thresholded binary image.
-* Apply a perspective transform to rectify binary image ("birds-eye view").
-* Detect lane pixels and fit to find the lane boundary.
-* Determine the curvature of the lane and vehicle position with respect to center.
-* Warp the detected lane boundaries back onto the original image.
-* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
-
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
+[image1]: ./writeup/distorted-chess.png "Distorted"
+[image2]: ./writeup/undistorted-chess.png "Undistorted"
+[image3]: ./writeup/undistorted-view.png "Undistorted Example"
+[image4]: ./writeup/perspective.png "Warped Perspective"
+[image5]: ./writeup/threshold.png "Thresholded"
+[image6]: ./writeup/overlay.png "Overlay"
 [video1]: ./project_video.mp4 "Video"
 
-## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
-
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
-
----
-
-### Writeup / README
-
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
-
-You're reading it!
-
 ### Camera Calibration
+The code can be found in the first five cells of the advanced-lane.ipynb file.  
 
-#### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+First I read in the supplied calibration images using cv2.imread.  Then I convert to grayscale and use the cv2.findChessboardCorners function to find the locations of the black/white squares in the calibration images.  I then use the cv2.drawChessboardCorners function to draw lines between the detected corners and plot them to visually verify that the corners are detected correctly.  I also save a list of "object points" which are the expected location of the chessboard corners in the real world.  These will be used later.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
-
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
-
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+Finally, I use the a object points above and the locations of the detected chessboard corners to calculate a calibration matrix and distortion matrix using the cv2.calibrateCamera function.
 
 ![alt text][image1]
+![alt text][image2]
 
 ### Pipeline (single images)
 
-#### 1. Provide an example of a distortion-corrected image.
-
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
-
-#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
-
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
-
+#### 1. First I undistort the image
+Here is an example of a captured image where the camera distortion is corrected.  This image was undistorted by using the cv2.undistort function along with the previously computed distortion matrix and calibration matrix.
 ![alt text][image3]
 
-#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
-
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
-
-This resulted in the following source and destination points:
-
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
-
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+#### 2. Then I warp the image using a perspective transform.
+I first calculate the M and Minv matrices used in the perspective transform.  These matrices will be reused for all image transformations going forward.  The code for this is in cells 13-15 in the advanced-lane.ipynb.  I used the same image from the previous section where the lane lines appear perfectly straight.  I then manually selected 4 points in the image (2 near the vanishing point of the lanes, and two where the lanes intersect the bottom of the image).  I then selected 4 other points to tranform to (same points at the bottom of the image, and two points intersecting the top of the image directly above the other  two points).  I then used the cv2 getPerspectiveTransform to calculate the perspective transform matrix M.  I then used the same points, but reversed the parameter order to cv2.getPerspectiveTransform to calculate the inverse matrix of M, Minv.  To verify that the M was correct I applied the perspective transform using cv2.warpPerspective to the above image.  You can see that the resulting image below has parallel lane lines.
 
 ![alt text][image4]
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+The pipeline utilizes the function def perspective_transform(img, M) to perform this transform going forward.
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
+#### 3. Thresholding to find lane lines.
+
+I decided to convert the images to the HLS color space.  Once converted I applied two different thresholds to find white and yellow lane lines, then combine the separate thresholded images to show all lane lines.  For white lines I found that using a threshold on Luminosity above 200 worked well.  For yellow, I found that a combination of saturation and luminosity both being above 100 worked well.
+
+See the above image after thresholding.
 ![alt text][image5]
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+#### 4. Fit polynomial to detected lanes
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+TODO
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+#### 5. Curvature and offset calculations
+TODO
+
+#### 6. Display lane overlay on single image
+
+TODO
 
 ![alt text][image6]
 
@@ -116,12 +60,9 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./project_video_output.mp4)
 
 ---
 
 ### Discussion
-
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
-
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+TODO
