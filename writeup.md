@@ -9,7 +9,7 @@
 [video1]: ./project_video.mp4 "Video"
 
 ### Camera Calibration
-The code can be found in the first five cells of the advanced-lane.ipynb file.  
+The code can be found in the first five cells of the [advanced-lane.ipynb](./advanced-lane.ipynb) file.  
 
 First I read in the supplied calibration images using cv2.imread.  Then I convert to grayscale and use the cv2.findChessboardCorners function to find the locations of the black/white squares in the calibration images.  I then use the cv2.drawChessboardCorners function to draw lines between the detected corners and plot them to visually verify that the corners are detected correctly.  I also save a list of "object points" which are the expected location of the chessboard corners in the real world.  These will be used later.
 
