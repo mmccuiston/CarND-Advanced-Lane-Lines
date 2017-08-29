@@ -42,14 +42,33 @@ See the above image after thresholding.
 
 
 #### 4. Fit polynomial to detected lanes
+Next I attempt to fit a second degree polynomial to the pixels that are set after thresholding above.  The polynomial fitting algorithms takes the following steps.  
+1. Split the image into left and right halves.
+2. For each half compute a histogram of all the x values for pixels that are 'on'.
+3. Set the 'start' pixel for both halves to be the peak of the respective histograms from previous step.
+4. For both halves create a window that is 200 pixels wide, 1/9th the image in height, and centered on the 'start' pixel from above.
+5. Save the x,y coords of 'on' pixels within the window to be used for the fitting algorithm later.
+6. If there are at least 50 pixels enabled in the window, then recenter the x value for the window to be the mean value x of the pixels in the window.
+7. Repeat steps 4-7 until 9 sliding window computations have been completed, thus covering the entire image.
+8. Use the coords saved from step 5 to fit a second degree polynomial to the coordinates.  We use numpy.polyfit for this.
 
-TODO
 
 #### 5. Curvature and offset calculations
-TODO
+We then calculate the curvature in meters of the lane.  We do this by converting all of the pixels saved from the previous step from pixel coordinates to real-world coordinates.  We use the following conversion factors.
+
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
+
+Once in real-world coordinates we fit a second degree polynomial to them.  Once we have the polynomial fit, we use the R-curve function.
+
+(((1 + (dx/dy)^2) ^ 3/2) / (d2x/dy2)
+
+This will give us the radius in meters for both the left and right lanes separately.  We then average them to get one value for the lane radius.
+
+The offset is calculated by calculating the intersection of both the right and left lane polynomials with the bottom of the image.  Then I take the middle of these two points and assume this is the center of the lane.  I use the center of the image as the position of the vehicle.  Calculating the offset is done by taking the difference of these two values.
 
 #### 6. Display lane overlay on single image
-
+I fit a polygon to the left and right points in the top-down perspective image.  Then I use open cv2.fillPoly to draw a polygon between the lines.  I overlay this polygon onto the original image using the cv2.addWeighted function.  Then I warp the image back to it's original perspective by using the Minv matrix calculated earlier and the cv2.warpPerspective function.
 TODO
 
 ![alt text][image6]
@@ -65,4 +84,4 @@ Here's a [link to my video result](./project_video_output.mp4)
 ---
 
 ### Discussion
-TODO
+I think my detection algorithm does a pretty good job on the project video.  There is some jitter around the furthest parts of the image.  I believe this could be made better by improving my thresholding algorithm and perhaps smoothing detections between images.
